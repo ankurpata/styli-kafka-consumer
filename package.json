@@ -1,0 +1,22 @@
+{
+  "name": "nodejs-kafka-example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "cookie-parser": "^1.4.5",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "graphql": "^15.0.0",
+    "graphql-request": "^1.8.2",
+    "graphql-tag": "^2.10.3",
+    "lodash": "^4.17.15",
+    "node-rdkafka": "^2.2.0"
+  }
+}
