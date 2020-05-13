@@ -5,21 +5,30 @@ const path = require("path");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const _ = require('lodash');
+const CSV = require('csv-string');
 
 const bodyParser = require('body-parser');
 const app = express();
 const product = require("./routes/product");
 
 const kafkaConf = {
-    "group.id": "cloudkarafka-example",
-    "metadata.broker.list": "rocket-01.srvs.cloudkafka.com:9094,rocket-02.srvs.cloudkafka.com:9094,rocket-03.srvs.cloudkafka.com:9094".split(","),
+    "group.id": "librd-test",
+    "metadata.broker.list": "localhost:9092",
     "socket.keepalive.enable": true,
-    "security.protocol": "SASL_SSL",
-    "sasl.mechanisms": "SCRAM-SHA-256",
-    "sasl.username": "bddcy39c",
-    "sasl.password": "e8hPouz3LL2rhp_vtQhp547rYsr9BbhQ",
+    'enable.auto.commit': false,
     "debug": "generic,broker,security"
 };
+
+// const kafkaConf = {
+//     "group.id": "cloudkarafka-example",
+//     "metadata.broker.list": "rocket-01.srvs.cloudkafka.com:9094,rocket-02.srvs.cloudkafka.com:9094,rocket-03.srvs.cloudkafka.com:9094".split(","),
+//     "socket.keepalive.enable": true,
+//     "security.protocol": "SASL_SSL",
+//     "sasl.mechanisms": "SCRAM-SHA-256",
+//     "sasl.username": "bddcy39c",
+//     "sasl.password": "e8hPouz3LL2rhp_vtQhp547rYsr9BbhQ",
+//     "debug": "generic,broker,security"
+// };
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
@@ -35,10 +44,12 @@ app.use(function (req, res, next) {
 try {
     console.log("kafka consumer is booting up")
 
-    const topics = [`bddcy39c-default`];
+    const topics = [`CSV_PRODUCTS`];
     const consumer = new Kafka.KafkaConsumer(kafkaConf, {
         "auto.offset.reset": "beginning"
     });
+
+
     const numMessages = 5;
     let counter = 0;
     consumer.on("error", function (err) {
@@ -56,6 +67,11 @@ try {
             consumer.commit(m);
         }
         let msgStr = m.value.toString();
+        mstStr= JSON.parse(msgStr);
+        console.log(msgStr, 'msgStr');
+        throw Error('Intentional Break');
+        msgStr = CSV.parse(msgStr);
+        // console.log(msgStr, 'msgStr');
         let newProducts = csv2json(msgStr, ',');
         console.log(msgStr, 'msgStr', newProducts);
 
@@ -93,12 +109,14 @@ try {
             }
             const {createProduct: {product: {_id}}} = await product.addProduct(input);
             console.log(`Saved product, _id: ${_id}`);
-
+            console.log(JSON.stringify(_.map(variants, 'price')), 'variants');
+            console.log(JSON.stringify(_.map(variants, 'sku')), 'variants');
             ////Save Variants////
-            const configurableVariationsArr = "sku=1022172802,size=S|sku=1022172803,size=M|sku=1022172804,size=L|sku=1022172805,size=XL".trim().split("|");
+            const configurableVariationsArr = configurableVariations.trim().split("|");
             if (configurableVariationsArr.length && variants.length) {
 
                 let i = 0;
+                const bulkVariants = [];
                 for (const conf of configurableVariationsArr) {
                     let productVariant = {};
                     const confArr = conf.split(",");
@@ -117,25 +135,39 @@ try {
                             productVariant.optionTitle = value;
                         }
                     }
-                    productVariant.price = parseFloat(variants[i].price);
+                    console.log('i, price', i, variants[i].price);
+                    const relevantVariant = variants.find(x => x.sku === productVariant.sku);
+                    productVariant.price = parseFloat(relevantVariant.price);
                     productVariant.isVisible = true;
-                    productVariant.length = parseFloat(variants[i].length) || 0;
-                    productVariant.weight = parseFloat(variants[i].weight) || 0;
-                    productVariant.sku = variants[i].sku;
+                    productVariant.length = parseFloat(relevantVariant.length) || 0;
+                    productVariant.weight = parseFloat(relevantVariant.weight) || 0;
+                    // productVariant.sku = variants[i].sku;
                     productVariant.metafields = [];
                     // productVariant.metafields.push({"additionalAttributes": variants[i].additionalAttributes});
                     ////Save product variant////
-                    const input = {
-                        input: {
-                            shopId: "cmVhY3Rpb24vc2hvcDpzOU1jWGVvQndEYTIzQW1Ldw",
-                            productId: _id,
-                            variant: productVariant
-                        }
-                    }
-                    const variant = await product.saveVariantForProduct(input);
-                    console.log(`Saved variant, SKU: ${productVariant.sku}`);
+                    // const input = {
+                    //     input: {
+                    //         shopId: "cmVhY3Rpb24vc2hvcDpzOU1jWGVvQndEYTIzQW1Ldw",
+                    //         productId: _id,
+                    //         variant: productVariant
+                    //     }
+                    // }
+                    // const variant = await product.saveVariantForProduct(input);
+                    // console.log(`Saved variant, SKU: ${productVariant.sku}`);
+                    bulkVariants.push(productVariant);
+                    i++;
                 }
 
+                //Save using bulk variants
+                const input = {
+                    input: {
+                        shopId: "cmVhY3Rpb24vc2hvcDpzOU1jWGVvQndEYTIzQW1Ldw",
+                        productId: _id,
+                        variants: bulkVariants
+                    }
+                }
+                const variantsRes = await product.saveBulkVariants(input);
+                console.log(`Saved variant, SKU: ${ JSON.stringify(variantsRes)}`);
 
             } else {
                 //Its a simple product//
@@ -170,6 +202,7 @@ try {
 
 } catch (e) {
     console.log(e);
+    throw Error(e);
 }
 
 app.listen(4569, () => {
@@ -177,16 +210,17 @@ app.listen(4569, () => {
 })
 
 
-const csv2json = (str, delimiter = ', ') => {
-    let titles = str.slice(0, str.indexOf('\n')).split(delimiter);
+const csv2json = (strArr, delimiter = ', ') => {
+    let titles = strArr[0];
     titles = titles.map((v, k) => _.camelCase(v));
 
-    const rows = str.slice(str.indexOf('\n') + 1).split('\n');
+    delete strArr[0];
+    const rows = strArr;
     let tmpVariants = [];
     let currParentSku = "";
     let res = [];
     rows.map(row => {
-        const values = row.split(delimiter);
+        const values = row;
         const retArr = titles.reduce((object, curr, i) => (object[curr] = values[i], object), {});
         let currSku = retArr['sku'];
         if (currParentSku == currSku) {
