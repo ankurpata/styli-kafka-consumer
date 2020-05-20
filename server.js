@@ -5,30 +5,38 @@ const path = require("path");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const _ = require('lodash');
-const CSV = require('csv-string');
+const csv = require('csvtojson')
+const {GraphQLClient} = require("graphql-request");
+const gqlUrl = "http://localhost:3000/graphql/";
+const attrCache = {};
+const client = new GraphQLClient(gqlUrl, {
+    headers: {
+        "Authorization": "W0fFjbiRmmxhAVlynkFMRjU2oAX9u6csfyiuSLSQc20.UxFcFLvZ6kjmjujQf4J7nUo6lXvIjaxruuFokDFxuIc"
+    }
+});
 
 const bodyParser = require('body-parser');
 const app = express();
 const product = require("./routes/product");
 
-const kafkaConf = {
-    "group.id": "librd-test",
-    "metadata.broker.list": "localhost:9092",
-    "socket.keepalive.enable": true,
-    'enable.auto.commit': false,
-    "debug": "generic,broker,security"
-};
-
 // const kafkaConf = {
-//     "group.id": "cloudkarafka-example",
-//     "metadata.broker.list": "rocket-01.srvs.cloudkafka.com:9094,rocket-02.srvs.cloudkafka.com:9094,rocket-03.srvs.cloudkafka.com:9094".split(","),
+//     "group.id": "librd-test",
+//     "metadata.broker.list": "localhost:9092",
 //     "socket.keepalive.enable": true,
-//     "security.protocol": "SASL_SSL",
-//     "sasl.mechanisms": "SCRAM-SHA-256",
-//     "sasl.username": "bddcy39c",
-//     "sasl.password": "e8hPouz3LL2rhp_vtQhp547rYsr9BbhQ",
+//     'enable.auto.commit': false,
 //     "debug": "generic,broker,security"
 // };
+
+const kafkaConf = {
+    "group.id": "cloudkarafka-example",
+    "metadata.broker.list": "rocket-01.srvs.cloudkafka.com:9094,rocket-02.srvs.cloudkafka.com:9094,rocket-03.srvs.cloudkafka.com:9094".split(","),
+    "socket.keepalive.enable": true,
+    "security.protocol": "SASL_SSL",
+    "sasl.mechanisms": "SCRAM-SHA-256",
+    "sasl.username": "bddcy39c",
+    "sasl.password": "e8hPouz3LL2rhp_vtQhp547rYsr9BbhQ",
+    "debug": "generic,broker,security"
+};
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
@@ -44,7 +52,7 @@ app.use(function (req, res, next) {
 try {
     console.log("kafka consumer is booting up")
 
-    const topics = [`CSV_PRODUCTS`];
+    const topics = [`bddcy39c-default`];
     const consumer = new Kafka.KafkaConsumer(kafkaConf, {
         "auto.offset.reset": "beginning"
     });
@@ -67,124 +75,68 @@ try {
             consumer.commit(m);
         }
         let msgStr = m.value.toString();
-        mstStr= JSON.parse(msgStr);
         console.log(msgStr, 'msgStr');
-        throw Error('Intentional Break');
-        msgStr = CSV.parse(msgStr);
-        // console.log(msgStr, 'msgStr');
-        let newProducts = csv2json(msgStr, ',');
-        console.log(msgStr, 'msgStr', newProducts);
+        // throw Error('Intentional Break');
+
+
+
+        let filePath = "./08.04.2020Working.csv";
+        if(msgStr  == 'UPLPOAD_CSV_BIG'){
+            filePath = "./bulkCsv.csv";
+        }
+        const newProducts = await csv().fromFile(filePath);
+
+        // console.log(newProducts, 'newProducts');
+        // let newProducts = csv2json(msgStr, ',');
+        // console.log(msgStr, 'msgStr', newProducts);
+        // throw Error('Intentional Break');
+
+        // Process data rows.
+        let tmpVariants = [];
+        let currParentSku = "";
+        const bulkCreateProductInput = [];
+
+        for (let outputarray of newProducts) {
+
+            let output2 = {};
+            for (const key of Object.keys(outputarray)) {
+                output2[_.camelCase(key)] = outputarray[key];
+            }
+
+            outputarray = output2;
+
+            // Process Row Array
+            // const productVariantSet = await mapAndInsertProduct(outputarray);
+            const currSku = outputarray.sku;
+            if (currParentSku == currSku) {
+                // product
+                outputarray.variants = tmpVariants;
+                tmpVariants = [];
+                currParentSku = "";
+                outputarray = await formatProductObj(outputarray);
+                bulkCreateProductInput.push(outputarray);
+            } else {
+                // variant
+                currParentSku = (`${currSku}`).slice(0, -2);
+                // eslint-disable-next-line no-console
+                tmpVariants.push(outputarray);
+            }
+        }
+        console.log(bulkCreateProductInput.length, 'newProducts');
+        // throw Error('Intentional Break');
+
 
         /**
          * Save New Products
          */
-        for (const productObj of newProducts) {
-            let variantObj = {};
-            let variants = productObj.variants;
-            const configurableVariations = productObj.configurableVariations;
-            productObj.isVisible = true;
-            productObj.title = productObj.name;
-            productObj.originalPrice = productObj.originalBasePrice;
-            variantObj.weight = productObj.weight;
-            variantObj.price = productObj.price;
-            const productOnline = productObj.productOnline;
-            delete productObj.sku;
-            delete productObj.categories;
-            delete productObj.name;
-            delete productObj.weight;
-            delete productObj.price;
-            delete productObj.createdAt;
-            delete productObj.updatedAt;
-            delete productObj.productOnline;
-            delete productObj.originalBasePrice;
-            delete productObj.variants;
-
-            //Save product//
-            const input = {
-                input: {
-                    shopId: "cmVhY3Rpb24vc2hvcDpzOU1jWGVvQndEYTIzQW1Ldw",
-                    product: productObj,
-                    shouldCreateFirstVariant: false
-                }
+        const inp = {
+            input: {
+                shopId: "cmVhY3Rpb24vc2hvcDo0Q2NYSnh6TEVSR21xTFd3WA",
+                data: bulkCreateProductInput
             }
-            const {createProduct: {product: {_id}}} = await product.addProduct(input);
-            console.log(`Saved product, _id: ${_id}`);
-            console.log(JSON.stringify(_.map(variants, 'price')), 'variants');
-            console.log(JSON.stringify(_.map(variants, 'sku')), 'variants');
-            ////Save Variants////
-            const configurableVariationsArr = configurableVariations.trim().split("|");
-            if (configurableVariationsArr.length && variants.length) {
-
-                let i = 0;
-                const bulkVariants = [];
-                for (const conf of configurableVariationsArr) {
-                    let productVariant = {};
-                    const confArr = conf.split(",");
-                    for (const variation of confArr) {
-                        const subVar = variation.split("=");
-                        if (!subVar.length) {
-                            continue;
-                        }
-                        const [key, value] = subVar;
-                        if (key === "sku") {
-                            // eslint-disable-next-line prefer-destructuring
-                            productVariant.sku = subVar[1];
-                        } else {
-                            // TODO: Use metaifelds with attributes key for more custom attributes
-                            productVariant.attributeLabel = key;
-                            productVariant.optionTitle = value;
-                        }
-                    }
-                    console.log('i, price', i, variants[i].price);
-                    const relevantVariant = variants.find(x => x.sku === productVariant.sku);
-                    productVariant.price = parseFloat(relevantVariant.price);
-                    productVariant.isVisible = true;
-                    productVariant.length = parseFloat(relevantVariant.length) || 0;
-                    productVariant.weight = parseFloat(relevantVariant.weight) || 0;
-                    // productVariant.sku = variants[i].sku;
-                    productVariant.metafields = [];
-                    // productVariant.metafields.push({"additionalAttributes": variants[i].additionalAttributes});
-                    ////Save product variant////
-                    // const input = {
-                    //     input: {
-                    //         shopId: "cmVhY3Rpb24vc2hvcDpzOU1jWGVvQndEYTIzQW1Ldw",
-                    //         productId: _id,
-                    //         variant: productVariant
-                    //     }
-                    // }
-                    // const variant = await product.saveVariantForProduct(input);
-                    // console.log(`Saved variant, SKU: ${productVariant.sku}`);
-                    bulkVariants.push(productVariant);
-                    i++;
-                }
-
-                //Save using bulk variants
-                const input = {
-                    input: {
-                        shopId: "cmVhY3Rpb24vc2hvcDpzOU1jWGVvQndEYTIzQW1Ldw",
-                        productId: _id,
-                        variants: bulkVariants
-                    }
-                }
-                const variantsRes = await product.saveBulkVariants(input);
-                console.log(`Saved variant, SKU: ${ JSON.stringify(variantsRes)}`);
-
-            } else {
-                //Its a simple product//
-                //Add a defualt variant based on product Params.
-            }
-        }
-        /**
-         * GraphQl queries
-         */
-        // const inp = {
-        //     shopIds: ["cmVhY3Rpb24vc2hvcDpzOU1jWGVvQndEYTIzQW1Ldw"],
-        //     first: 10,
-        //     limit: 10,
-        //     offset: 0
-        // };
-        // const productList = await product.getProduct(inp);
-        // console.log(productList, 'productList');
+        };
+        const productIds = await product.createBulkProductFn(inp);
+        console.log({ productIds });
 
     });
     consumer.on("disconnected", function (arg) {
@@ -208,6 +160,95 @@ try {
 app.listen(4569, () => {
     console.log("Server is listening to port 4569");
 })
+
+
+const getAttributeGroups = async (attributeSetCode) => {
+    const {getAttributeGroups: {attributeGroups}} = await client.request(AttributeGroupMappingGQL, {
+        attributeSetId: attributeSetCode,
+        shopId: "cmVhY3Rpb24vc2hvcDo0Q2NYSnh6TEVSR21xTFd3WA"
+    });
+    console.log(attributeGroups, 'attributeGroups');
+    return attributeGroups;
+};
+
+const getMetaFields = async (row) => {
+    const {attributeSetCode, additionalAttributes} = row;
+    const additionalAttrArr = additionalAttributes.split(",");
+    additionalAttrArr.map((val) => {
+        const subVar = val.split("=");
+        const [l, r] = subVar;
+        row[l] = r;
+    });
+
+
+    const attributeGroups = attrCache[attributeSetCode] || await getAttributeGroups(attributeSetCode);
+    attrCache[attributeSetCode] = attributeGroups;
+    if (!attributeGroups || !attributeGroups.length) {
+        return [];
+    }
+    return attributeGroups.map((attrGroup) => {
+        const metaKey = attrGroup.attributeGroupLabel.trim()
+            .split(" ")
+            .join("-");
+        const {attributes} = attrGroup;
+        const attributeValueObj = {};
+        attributes.map((attribute) => {
+            attributeValueObj[attribute.label] = row[attribute.label];
+        });
+        // TODO: Remove stringify and use object
+        return {
+            key: metaKey,
+            value: JSON.stringify(attributeValueObj)
+        };
+    });
+};
+
+const formatProductObj = async (productObj) => {
+    const metafields = await getMetaFields(productObj);
+    const {variants, configurableVariations, attributeSetCode} = productObj;
+    const product = {
+        title: productObj.name,
+        metafields,
+        isVisible: true,
+        attributeSetCode,
+        productType: productObj.productType
+    };
+    const configurableVariationsArr = configurableVariations.trim()
+        .split("|");
+    const bulkVariants = [];
+
+    if (configurableVariationsArr.length && variants.length) {
+        for (const conf of configurableVariationsArr) {
+            const productVariant = {};
+            const confArr = conf.split(",");
+            for (const variation of confArr) {
+                const subVar = variation.split("=");
+                if (!subVar.length) {
+                    continue;
+                }
+                const [key, value] = subVar;
+                if (key === "sku") {
+                    // eslint-disable-next-line prefer-destructuring
+                    productVariant.sku = subVar[1];
+                } else {
+                    productVariant.attributeLabel = key;
+                    productVariant.optionTitle = value;
+                }
+            }
+            const relevantVariant = variants.find((x) => x.sku === productVariant.sku);
+            productVariant.price = parseFloat(relevantVariant.price);
+            productVariant.isVisible = true;
+            productVariant.length = parseFloat(relevantVariant.length) || 0;
+            productVariant.weight = parseFloat(relevantVariant.weight) || 0;
+            productVariant.metafields = await getMetaFields(productObj);
+            bulkVariants.push(productVariant);
+        }
+    }
+    return {
+        product,
+        variants: bulkVariants
+    };
+};
 
 
 const csv2json = (strArr, delimiter = ', ') => {
@@ -239,6 +280,10 @@ const csv2json = (strArr, delimiter = ', ') => {
     return res;
 };
 
-const groupProducts = (arr) => {
-
-}
+const AttributeGroupMappingGQL = `
+    query getAttributeGroups($attributeSetId: ID!, $shopId: ID!) {
+        getAttributeGroups(input:{ attributeSetId : $attributeSetId , shopId:$shopId} ) {
+            attributeGroups{attributes{label, id} , attributeGroupId , attributeGroupLabel}
+        }
+    }
+`;
