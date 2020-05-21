@@ -5,7 +5,7 @@ const gqlUrl = "http://localhost:3000/graphql/";
 
 const client = new GraphQLClient(gqlUrl, {
     headers: {
-        "Authorization": "W0fFjbiRmmxhAVlynkFMRjU2oAX9u6csfyiuSLSQc20.UxFcFLvZ6kjmjujQf4J7nUo6lXvIjaxruuFokDFxuIc"
+        "Authorization": "pZ8jiQpy_ViUyoWB2WHloLqBDY8n8toE_2H3rsglBSc.mCJpJ6wiMC07AQjWXulLCLbHfPt9EI6JViSrnNcriWA"
     }
 });
 

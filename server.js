@@ -11,7 +11,7 @@ const gqlUrl = "http://localhost:3000/graphql/";
 const attrCache = {};
 const client = new GraphQLClient(gqlUrl, {
     headers: {
-        "Authorization": "W0fFjbiRmmxhAVlynkFMRjU2oAX9u6csfyiuSLSQc20.UxFcFLvZ6kjmjujQf4J7nUo6lXvIjaxruuFokDFxuIc"
+        "Authorization": "pZ8jiQpy_ViUyoWB2WHloLqBDY8n8toE_2H3rsglBSc.mCJpJ6wiMC07AQjWXulLCLbHfPt9EI6JViSrnNcriWA"
     }
 });
 
@@ -38,8 +38,13 @@ const kafkaConf = {
     "debug": "generic,broker,security"
 };
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({extended: false}));
+app.use(bodyParser.json({limit: '10mb', extended: true}));
+app.use(bodyParser.urlencoded({limit: '10mb', extended: true}));
+// app.use(appo.getMiddleware({ path: '/graphql' });
+
+
+// app.use(bodyParser.urlencoded({extended: true}));
+// app.use(bodyParser.json({extended: true}));
 app.use(cookieParser());
 app.use(cors());
 // app.use("/product", productRouter);
@@ -79,9 +84,8 @@ try {
         // throw Error('Intentional Break');
 
 
-
         let filePath = "./08.04.2020Working.csv";
-        if(msgStr  == 'UPLPOAD_CSV_BIG'){
+        if (msgStr == 'UPLPOAD_CSV_BIG') {
             filePath = "./bulkCsv.csv";
         }
         const newProducts = await csv().fromFile(filePath);
@@ -136,7 +140,7 @@ try {
             }
         };
         const productIds = await product.createBulkProductFn(inp);
-        console.log({ productIds });
+        console.log({productIds});
 
     });
     consumer.on("disconnected", function (arg) {
