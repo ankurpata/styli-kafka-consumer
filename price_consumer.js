@@ -9,9 +9,10 @@ const csv = require('csvtojson')
 const {GraphQLClient} = require("graphql-request");
 const gqlUrl = "http://localhost:3000/graphql/";
 const attrCache = {};
+const {AlgoliaProducer} = require("./algolia_producer_service.js");
 const client = new GraphQLClient(gqlUrl, {
     headers: {
-        "Authorization": "yMnbHEo2hc_FW0Ay1FZ8r2cyTmpBO-N-yB8V2xiXV-k.fGWHGk9ghY1RhLD-vpRmNyGzfU2u0DFR0mn8jwoc1-Q"
+        "Authorization": "pZ8jiQpy_ViUyoWB2WHloLqBDY8n8toE_2H3rsglBSc.mCJpJ6wiMC07AQjWXulLCLbHfPt9EI6JViSrnNcriWA"
     }
 });
 
@@ -23,7 +24,7 @@ const kafkaConf = {
     "group.id": "librd-test",
     "metadata.broker.list": "localhost:9092",
     "socket.keepalive.enable": true,
-    'enable.auto.commit': false,
+    'enable.auto.commit': true,
     "debug": "generic,broker,security"
 };
 
@@ -58,7 +59,7 @@ try {
     console.log("kafka consumer is booting up")
 
     // const topics = [`bddcy39c-default`];
-    const topics = [`IMPORT_CSV`];
+    const topics = [`PRICE_REVISION`];
     const consumer = new Kafka.KafkaConsumer(kafkaConf, {
         "auto.offset.reset": "beginning"
     });
@@ -75,72 +76,35 @@ try {
     });
     consumer.on("data", async function (m) {
         counter++;
-        if (counter % numMessages === 0) {
-            console.log("calling commit");
-            consumer.commit(m);
-        }
+        // if (counter % numMessages === 0) {
+        //     console.log("calling commit");
+        consumer.commit(m);
+        // }
         let msgStr = m.value.toString();
-        console.log(msgStr, 'msgStr');
-        // throw Error('Intentional Break');
-
-
-        let filePath = "./08.04.2020Working.csv";
-        if (msgStr == 'UPLPOAD_CSV_BIG') {
-            filePath = "./bulkCsv.csv";
-        }
-        const newProducts = await csv().fromFile(filePath);
-
-        // console.log(newProducts, 'newProducts');
-        // let newProducts = csv2json(msgStr, ',');
-        // console.log(msgStr, 'msgStr', newProducts);
-        // throw Error('Intentional Break');
-
-        // Process data rows.
-        let tmpVariants = [];
-        let currParentSku = "";
-        const bulkCreateProductInput = [];
-
-        for (let outputarray of newProducts) {
-
-            let output2 = {};
-            for (const key of Object.keys(outputarray)) {
-                output2[_.camelCase(key)] = outputarray[key];
-            }
-
-            outputarray = output2;
-
-            // Process Row Array
-            // const productVariantSet = await mapAndInsertProduct(outputarray);
-            const currSku = outputarray.sku;
-            if (currParentSku == currSku) {
-                // product
-                outputarray.variants = tmpVariants;
-                tmpVariants = [];
-                currParentSku = "";
-                outputarray = await formatProductObj(outputarray);
-                bulkCreateProductInput.push(outputarray);
-            } else {
-                // variant
-                currParentSku = (`${currSku}`).slice(0, -2);
-                // eslint-disable-next-line no-console
-                tmpVariants.push(outputarray);
-            }
-        }
-        console.log(bulkCreateProductInput.length, 'newProducts');
-        // throw Error('Intentional Break');
-
+        console.log(msgStr, '~~~~~~~Kafka Stream Response~~~~~~~');
 
         /**
-         * Save New Products
+         * Save New Prices for SKUs
          */
+        const batchUpdateArr = JSON.parse(msgStr).map(([sku, price, special_price]) => ({
+            sku,
+            price,
+            special_price,
+        }));
+
         const inp = {
             input: {
                 shopId: "cmVhY3Rpb24vc2hvcDo0Q2NYSnh6TEVSR21xTFd3WA",
-                data: bulkCreateProductInput
+                data: batchUpdateArr
             }
         };
-        const productIds = await product.createBulkProductFn(inp);
-        console.log({productIds});
+        const uploadRes = await product.updateProductBySku(inp);
+        console.log("~~~~~~~Saved in Reaction Catalog~~~~~~~~~", uploadRes);
+
+
+        //Dispatch action on Kafka Topic to update Algolia
+        AlgoliaProducer(msgStr);
+
 
     });
     consumer.on("disconnected", function (arg) {
@@ -161,8 +125,8 @@ try {
     throw Error(e);
 }
 
-app.listen(4569, () => {
-    console.log("Server is listening to port 4569");
+app.listen(4568, () => {
+    console.log("Price consumer Server is listening to port 4568");
 })
 
 

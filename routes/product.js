@@ -5,7 +5,7 @@ const gqlUrl = "http://localhost:3000/graphql/";
 
 const client = new GraphQLClient(gqlUrl, {
     headers: {
-        "Authorization": "pZ8jiQpy_ViUyoWB2WHloLqBDY8n8toE_2H3rsglBSc.mCJpJ6wiMC07AQjWXulLCLbHfPt9EI6JViSrnNcriWA"
+        "Authorization": "yMnbHEo2hc_FW0Ay1FZ8r2cyTmpBO-N-yB8V2xiXV-k.fGWHGk9ghY1RhLD-vpRmNyGzfU2u0DFR0mn8jwoc1-Q"
     }
 });
 
@@ -55,6 +55,23 @@ const createBulkProductFn = async (inp) => {
               status
             }
          }
+        `;
+        data = await client.request(mutation, inp);
+        return data;
+    } catch (e) {
+        console.log(e.message.substring(0,1000), ' ~~~Error saving~~~ ');
+    }
+}
+
+const updateProductBySku = async (inp) => {
+    let data;
+    try {
+        const mutation = `
+          mutation updateProductBySku ($input: UpdateProductBySkuInput!) {
+            updateProductBySku(input: $input) { 
+              id
+            }
+          }
         `;
         data = await client.request(mutation, inp);
         return data;
@@ -124,6 +141,7 @@ const getProduct = async (inp) => {
 };
 
 exports.getProduct = getProduct;
+exports.updateProductBySku = updateProductBySku;
 exports.addProduct = addProduct;
 exports.createBulkProductFn = createBulkProductFn;
 exports.saveBulkVariants = saveBulkVariants;
