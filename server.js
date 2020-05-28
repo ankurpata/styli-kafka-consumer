@@ -11,7 +11,7 @@ const gqlUrl = "http://localhost:3000/graphql/";
 const attrCache = {};
 const client = new GraphQLClient(gqlUrl, {
     headers: {
-        "Authorization": "6sLWt7P1gIP4n5A97Q8MRWmfM7_MEm5pBuHDa79g_iU.DSSjy1In-jPeN9Vg2MeVfXhYuoQ6QS6slhlnC8zU_nk"
+        "Authorization": "xsIsR5ZcPMKMqA1DF8G1sxkdn0oHiqxfprHROWlrBLw.QDOAHpxxUgNaaOSkcQW5oPDBe_Y1u6dFOGWX-dcPBvM"
     }
 });
 const {AlgoliaProducer} = require("./algolia_producer_service.js");
@@ -81,14 +81,15 @@ try {
             consumer.commit(m);
         }
         let msgStr = m.value.toString();
-        console.log(msgStr, 'msgStr');
+        console.log(msgStr, 'msgStr', JSON.parse(msgStr));
         // throw Error('Intentional Break');
 
 
         let filePath = "./08.04.2020Working.csv";
-        if (msgStr == 'UPLPOAD_CSV_BIG') {
+        if (JSON.parse(msgStr) == 'UPLOAD_CSV_BIG') {
             filePath = "./bulkCsv.csv";
         }
+        console.log(filePath, 'filePath')
         const newProducts = await csv().fromFile(filePath);
 
         // console.log(newProducts, 'newProducts');
@@ -131,21 +132,25 @@ try {
         // throw Error('Intentional Break');
 
 
-        /**
-         * Save New Products
-         */
-        const inp = {
-            input: {
-                shopId: "cmVhY3Rpb24vc2hvcDo0Q2NYSnh6TEVSR21xTFd3WA",
-                data: bulkCreateProductInput
-            }
-        };
-        const productIds = await product.createBulkProductFn(inp);
-        console.log({productIds});
+        //Break total into chunks of batch 200.
+        const chunks = _.chunk(bulkCreateProductInput, 200);
+        console.log(`Broken full data into chunk of ${chunks.length}`);
+        for (const chunk of chunks) {
+            /**
+             * Save New Products
+             */
+            const inp = {
+                input: {
+                    shopId: "cmVhY3Rpb24vc2hvcDo0Q2NYSnh6TEVSR21xTFd3WA",
+                    data: chunk
+                }
+            };
+            const productIds = await product.createBulkProductFn(inp);
+            console.log({productIds});
 
-        //Dispatch to Kafka. Call Producer
-        AlgoliaProducer(JSON.stringify(bulkCreateProductInput), "ALGOLIA_PRODUCT_UPDATE", "KEY-PRORDUCT-AlGOLIA");
-
+            //Dispatch to Kafka. Call Producer
+            AlgoliaProducer(JSON.stringify(chunk), "ALGOLIA_PRODUCT_UPDATE", "KEY-PRORDUCT-AlGOLIA");
+        }
 
     });
     consumer.on("disconnected", function (arg) {
@@ -176,7 +181,7 @@ const getAttributeGroups = async (attributeSetCode) => {
         attributeSetId: attributeSetCode,
         shopId: "cmVhY3Rpb24vc2hvcDo0Q2NYSnh6TEVSR21xTFd3WA"
     });
-    console.log(attributeGroups, 'attributeGroups');
+    // console.log(attributeGroups, 'attributeGroups');
     return attributeGroups;
 };
 
