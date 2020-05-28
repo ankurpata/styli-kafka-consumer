@@ -12,7 +12,7 @@ const attrCache = {};
 const {AlgoliaProducer} = require("./algolia_producer_service.js");
 const client = new GraphQLClient(gqlUrl, {
     headers: {
-        "Authorization": "pZ8jiQpy_ViUyoWB2WHloLqBDY8n8toE_2H3rsglBSc.mCJpJ6wiMC07AQjWXulLCLbHfPt9EI6JViSrnNcriWA"
+        "Authorization": "CYJkrBr8l8ypfi37v8f1nCMo6JxeNN4CPqHkaYk5gE0.rWle7fsQZliuTT0wNAcUNUC1EdZiUxyWBXuXzanNQFk"
     }
 });
 
