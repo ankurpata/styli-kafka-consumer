@@ -11,9 +11,10 @@ const gqlUrl = "http://localhost:3000/graphql/";
 const attrCache = {};
 const client = new GraphQLClient(gqlUrl, {
     headers: {
-        "Authorization": "yMnbHEo2hc_FW0Ay1FZ8r2cyTmpBO-N-yB8V2xiXV-k.fGWHGk9ghY1RhLD-vpRmNyGzfU2u0DFR0mn8jwoc1-Q"
+        "Authorization": "6sLWt7P1gIP4n5A97Q8MRWmfM7_MEm5pBuHDa79g_iU.DSSjy1In-jPeN9Vg2MeVfXhYuoQ6QS6slhlnC8zU_nk"
     }
 });
+const {AlgoliaProducer} = require("./algolia_producer_service.js");
 
 const bodyParser = require('body-parser');
 const app = express();
@@ -141,6 +142,10 @@ try {
         };
         const productIds = await product.createBulkProductFn(inp);
         console.log({productIds});
+
+        //Dispatch to Kafka. Call Producer
+        AlgoliaProducer(JSON.stringify(bulkCreateProductInput), "ALGOLIA_PRODUCT_UPDATE", "KEY-PRORDUCT-AlGOLIA");
+
 
     });
     consumer.on("disconnected", function (arg) {

@@ -1,7 +1,7 @@
 const Kafka = require('node-rdkafka');
 
 
-const AlgoliaProducer = async (rows) => {
+const AlgoliaProducer = async (rows, topic, keyReq) => {
     try {
 
         const producer = new Kafka.Producer({
@@ -28,9 +28,9 @@ const AlgoliaProducer = async (rows) => {
         //Wait for the ready event before producing
         producer.on('ready', function (arg) {
             // console.log('producer ready.' + JSON.stringify(arg));
-            const TOPIC = "ALGOLIA_PRICE_UPDATE";
+            const TOPIC = topic || "ALGOLIA_PRICE_UPDATE";
             const partition = -1;
-            const key = 'KEY-PRICE-AlGOLIA';
+            const key = keyReq || 'KEY-PRICE-AlGOLIA';
             // console.log(rows, 'rows@producerReady', typeof (rows))
             let value = Buffer.from(rows);
             producer.produce(TOPIC, partition, value, key);

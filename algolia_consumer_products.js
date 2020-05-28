@@ -3,7 +3,6 @@ const express = require('express');
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const _ = require('lodash');
-const attrCache = {};
 const axios = require('axios');
 
 
@@ -34,7 +33,7 @@ try {
     console.log("kafka Algolia consumer is booting up")
 
     // const topics = [`bddcy39c-default`];
-    const topics = [`ALGOLIA_PRICE_UPDATE`];
+    const topics = [`ALGOLIA_PRODUCT_UPDATE`];
     const consumer = new Kafka.KafkaConsumer(kafkaConf, {
         "auto.offset.reset": "beginning"
     });
@@ -56,20 +55,25 @@ try {
         consumer.commit(m);
         // }
         let msgStr = m.value.toString();
-        console.log(msgStr, '~~~~~~~Kafka Stream Response~~~~~~~');
+        console.log(msgStr.length, '~~~~~~~Kafka Stream Product Response~~~~~~~');
         const updateArray = JSON.parse(msgStr);
         console.log(updateArray[1], 'updateArray[1]');
         //Push updates to Algolia
 
-        const index = client.initIndex('reaction_kafka_test');
+        const index = client.initIndex('reaction_kafka_product');
         updateArray.shift();
-        const batchUpdateArr = updateArray.map(([sku, price, special_price]) => ({
-            sku,
-            price,
-            special_price,
-            objectID: sku
-        }));
-        console.log(batchUpdateArr, 'batchUpdateArr', batchUpdateArr.length);
+        const batchUpdateArr = updateArray.map((productVariant) => {
+            const {product, variants} = productVariant;
+            let productSku = variants[0].sku.substring(0, variants[0].sku.length - 2);
+            return {
+                sku: productSku,
+                title:product.title,
+                objectID: productSku,
+                variantSize: variants.length,
+                attributeSize: product.metafields.length
+            }
+        });
+        console.log(batchUpdateArr.length, ': Size of batchUpdateArr', batchUpdateArr.length);
 
         // throw Error("Exception Intentionally");
 
@@ -115,7 +119,7 @@ try {
          */
         let i = 1;
         const logParams = {
-            "iterationName": "price_revision_save",
+            "iterationName": "csv_produts_save",
             "iterationNumber": (new Date()).getTime().toString(),
             "numRecords": batchUpdateArr.length,
             "execTime1": -1,
@@ -131,7 +135,7 @@ try {
 
             //Async post and do not wait for response.
             const {data: logRes} = await axios.post('https://us-central1-stylishopdev.cloudfunctions.net/perf-monitor', logParams);
-            console.log(batchUpdateArr.length, logParams, 'Read batchUpdateArr CSV', ". Dispatching price revision data. logRes: ", logRes);
+            console.log(batchUpdateArr.length, logParams, 'Read batchUpdateArr CSV', ". Dispatching product updates data. logRes: ", logRes);
         } catch (e) {
             console.log(e.message, 'Error logging')
         }
@@ -154,7 +158,7 @@ try {
     throw Error(e);
 }
 
-app.listen(4567, () => {
+app.listen(4566, () => {
     console.log("Price consumer Server is listening to port 4568");
 })
 
