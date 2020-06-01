@@ -57,8 +57,9 @@ try {
         // }
         let msgStr = m.value.toString();
         console.log(msgStr, '~~~~~~~Kafka Stream Response~~~~~~~');
-        const updateArray = JSON.parse(msgStr);
-        console.log(updateArray[1], 'updateArray[1]');
+        const payload = JSON.parse(msgStr);
+        const updateArray = payload.data;
+        // console.log(updateArray[1], 'updateArray[1]');
         //Push updates to Algolia
 
         const index = client.initIndex('reaction_kafka_test');
@@ -69,7 +70,7 @@ try {
             special_price,
             objectID: sku
         }));
-        console.log(batchUpdateArr, 'batchUpdateArr', batchUpdateArr.length);
+        // console.log(batchUpdateArr, 'batchUpdateArr', batchUpdateArr.length);
 
         // throw Error("Exception Intentionally");
 
@@ -107,7 +108,7 @@ try {
         } catch (e) {
             console.log(e.message, 'e@message,Error');
         }
-        console.log("~~~~~ Done batch ~~~~", updateArray.length);
+        console.log("~~~~~ Done batch (Algolia Pricing UPDATE) ~~~~", updateArray.length);
 
 
         /**
@@ -116,8 +117,8 @@ try {
         let i = 1;
         const logParams = {
             "iterationName": "price_revision_save",
-            "iterationNumber": (new Date()).getTime().toString(),
-            "numRecords": batchUpdateArr.length,
+            "iterationNumber": payload.intNo,
+            "numRecords": batchUpdateArr.length -1,
             "execTime1": -1,
             "startTime": new Date().toISOString(),
             "endTime": new Date().toISOString(),

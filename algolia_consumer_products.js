@@ -56,7 +56,9 @@ try {
         // }
         let msgStr = m.value.toString();
         console.log(msgStr.length, '~~~~~~~Kafka Stream Product Response~~~~~~~');
-        const updateArray = JSON.parse(msgStr);
+        const payload = JSON.parse(msgStr);
+        let intNo  = payload.intNo;
+        const updateArray = payload.data;
         console.log(updateArray[1], 'updateArray[1]');
         //Push updates to Algolia
 
@@ -107,7 +109,7 @@ try {
         // }
         try {
             const res = await index.saveObjects(batchUpdateArr, {autoGenerateObjectIDIfNotExist: true});
-            console.log(res, ' Res Bulk UPSERT ');
+            console.log(' Res Bulk products UPSERT SAVE ');
         } catch (e) {
             console.log(e.message, 'e@message,Error');
         }
@@ -120,7 +122,7 @@ try {
         let i = 1;
         const logParams = {
             "iterationName": "csv_produts_save",
-            "iterationNumber": (new Date()).getTime().toString(),
+            "iterationNumber": intNo,
             "numRecords": batchUpdateArr.length,
             "execTime1": -1,
             "startTime": new Date().toISOString(),

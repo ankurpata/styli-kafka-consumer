@@ -5,15 +5,19 @@ const path = require("path");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const _ = require('lodash');
+require('dotenv').config()
 const csv = require('csvtojson')
 const {GraphQLClient} = require("graphql-request");
 const gqlUrl = "http://localhost:3000/graphql/";
 const attrCache = {};
+
 const client = new GraphQLClient(gqlUrl, {
     headers: {
-        "Authorization": "xsIsR5ZcPMKMqA1DF8G1sxkdn0oHiqxfprHROWlrBLw.QDOAHpxxUgNaaOSkcQW5oPDBe_Y1u6dFOGWX-dcPBvM"
+        "Authorization": process.env.AUTH_KEY
     }
 });
+
+const shopId = process.env.SHOPID;
 const {AlgoliaProducer} = require("./algolia_producer_service.js");
 
 const bodyParser = require('body-parser');
@@ -83,10 +87,10 @@ try {
         let msgStr = m.value.toString();
         console.log(msgStr, 'msgStr', JSON.parse(msgStr));
         // throw Error('Intentional Break');
-
-
+        let payload = JSON.parse(msgStr);
+        let intNo = payload.intNo;
         let filePath = "./08.04.2020Working.csv";
-        if (JSON.parse(msgStr) == 'UPLOAD_CSV_BIG') {
+        if (payload['value'] == 'UPLOAD_CSV_BIG') {
             filePath = "./bulkCsv.csv";
         }
         console.log(filePath, 'filePath')
@@ -141,7 +145,7 @@ try {
              */
             const inp = {
                 input: {
-                    shopId: "cmVhY3Rpb24vc2hvcDo0Q2NYSnh6TEVSR21xTFd3WA",
+                    shopId,
                     data: chunk
                 }
             };
@@ -149,7 +153,8 @@ try {
             console.log({productIds});
 
             //Dispatch to Kafka. Call Producer
-            AlgoliaProducer(JSON.stringify(chunk), "ALGOLIA_PRODUCT_UPDATE", "KEY-PRORDUCT-AlGOLIA");
+            const prodPayload = {data: chunk, intNo};
+            AlgoliaProducer(JSON.stringify(prodPayload), "ALGOLIA_PRODUCT_UPDATE", "KEY-PRORDUCT-AlGOLIA");
         }
 
     });
@@ -179,7 +184,7 @@ app.listen(4569, () => {
 const getAttributeGroups = async (attributeSetCode) => {
     const {getAttributeGroups: {attributeGroups}} = await client.request(AttributeGroupMappingGQL, {
         attributeSetId: attributeSetCode,
-        shopId: "cmVhY3Rpb24vc2hvcDo0Q2NYSnh6TEVSR21xTFd3WA"
+        shopId
     });
     // console.log(attributeGroups, 'attributeGroups');
     return attributeGroups;

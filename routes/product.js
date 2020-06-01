@@ -2,10 +2,12 @@ const express = require("express");
 const {GraphQLClient} = require("graphql-request");
 const router = express.Router();
 const gqlUrl = "http://localhost:3000/graphql/";
+const { exec } = require('child_process');
+
 
 const client = new GraphQLClient(gqlUrl, {
     headers: {
-        "Authorization": "xsIsR5ZcPMKMqA1DF8G1sxkdn0oHiqxfprHROWlrBLw.QDOAHpxxUgNaaOSkcQW5oPDBe_Y1u6dFOGWX-dcPBvM"
+        "Authorization": process.env.AUTH_KEY
     }
 });
 

@@ -12,9 +12,11 @@ const attrCache = {};
 const {AlgoliaProducer} = require("./algolia_producer_service.js");
 const client = new GraphQLClient(gqlUrl, {
     headers: {
-        "Authorization": "CYJkrBr8l8ypfi37v8f1nCMo6JxeNN4CPqHkaYk5gE0.rWle7fsQZliuTT0wNAcUNUC1EdZiUxyWBXuXzanNQFk"
+        "Authorization": process.env.AUTH_KEY
     }
 });
+
+const shopId = process.env.SHOPID;
 
 const bodyParser = require('body-parser');
 const app = express();
@@ -81,12 +83,14 @@ try {
         consumer.commit(m);
         // }
         let msgStr = m.value.toString();
+        const payload = JSON.parse(msgStr);
+        let intNo = payload.intNo;
         console.log(msgStr, '~~~~~~~Kafka Stream Response~~~~~~~');
 
         /**
          * Save New Prices for SKUs
          */
-        const batchUpdateArr = JSON.parse(msgStr).map(([sku, price, special_price]) => ({
+        const batchUpdateArr = payload.data.map(([sku, price, special_price]) => ({
             sku,
             price,
             special_price,
@@ -94,13 +98,12 @@ try {
 
         const inp = {
             input: {
-                shopId: "cmVhY3Rpb24vc2hvcDo0Q2NYSnh6TEVSR21xTFd3WA",
+                shopId,
                 data: batchUpdateArr
             }
         };
         const uploadRes = await product.updateProductBySku(inp);
         console.log("~~~~~~~Saved in Reaction Catalog~~~~~~~~~", uploadRes);
-
 
         //Dispatch action on Kafka Topic to update Algolia
         AlgoliaProducer(msgStr);
@@ -133,7 +136,7 @@ app.listen(4568, () => {
 const getAttributeGroups = async (attributeSetCode) => {
     const {getAttributeGroups: {attributeGroups}} = await client.request(AttributeGroupMappingGQL, {
         attributeSetId: attributeSetCode,
-        shopId: "cmVhY3Rpb24vc2hvcDo0Q2NYSnh6TEVSR21xTFd3WA"
+        shopId
     });
     console.log(attributeGroups, 'attributeGroups');
     return attributeGroups;
