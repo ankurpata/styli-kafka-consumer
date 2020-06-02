@@ -70,7 +70,6 @@ try {
             return {
                 sku: productSku,
                 title:product.title,
-                objectID: productSku,
                 variantSize: variants.length,
                 attributeSize: product.metafields.length
             }
