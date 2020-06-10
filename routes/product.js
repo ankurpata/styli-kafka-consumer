@@ -67,7 +67,9 @@ const createBulkProductFn = async (inp) => {
 
 const updateProductBySku = async (inp) => {
     let data;
-    try {
+    
+	console.log(inp, '@input@product.js');
+	try {
         const mutation = `
           mutation updateProductBySku ($input: UpdateProductBySkuInput!) {
             updateProductBySku(input: $input) { 

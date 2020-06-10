@@ -64,11 +64,11 @@ try {
 
         const index = client.initIndex('reaction_kafka_test');
         updateArray.shift();
-        const batchUpdateArr = updateArray.map(([sku, price, special_price]) => ({
+      //   objectID: sku
+	const batchUpdateArr = updateArray.map(([sku, price, special_price]) => ({
             sku,
             price,
             special_price,
-            objectID: sku
         }));
         // console.log(batchUpdateArr, 'batchUpdateArr', batchUpdateArr.length);
 

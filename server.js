@@ -26,6 +26,7 @@ const product = require("./routes/product");
 
 const kafkaConf = {
     "group.id": "librd-test",
+    "fetch.message.max.bytes":"15728640",
     "metadata.broker.list": "localhost:9092",
     "socket.keepalive.enable": true,
     'enable.auto.commit': false,
@@ -96,7 +97,7 @@ try {
         console.log(filePath, 'filePath')
         const newProducts = await csv().fromFile(filePath);
 
-        // console.log(newProducts, 'newProducts');
+        //console.log(newProducts, 'newProducts');
         // let newProducts = csv2json(msgStr, ',');
         // console.log(msgStr, 'msgStr', newProducts);
         // throw Error('Intentional Break');
@@ -137,7 +138,7 @@ try {
 
 
         //Break total into chunks of batch 200.
-        const chunks = _.chunk(bulkCreateProductInput, 200);
+        const chunks = _.chunk(bulkCreateProductInput, 400);
         console.log(`Broken full data into chunk of ${chunks.length}`);
         for (const chunk of chunks) {
             /**
@@ -149,12 +150,24 @@ try {
                     data: chunk
                 }
             };
-            const productIds = await product.createBulkProductFn(inp);
-            console.log({productIds});
+		console.log('creatig bulk product');
+ //           const productIds = await product.createBulkProductFn(inp);
+    //        console.log('created',{productIds});
 
             //Dispatch to Kafka. Call Producer
-            const prodPayload = {data: chunk, intNo};
-            AlgoliaProducer(JSON.stringify(prodPayload), "ALGOLIA_PRODUCT_UPDATE", "KEY-PRORDUCT-AlGOLIA");
+            const algoliaData = chunk.map((productVariant) => {
+           	const {product, variants} = productVariant;
+            	let productSku = variants[0].sku.substring(0, variants[0].sku.length - 2);
+                return  {
+                 sku: productSku,
+                 title:product.title,
+                 variantSize: variants.length,
+                 attributeSize: product.metafields.length
+              }
+            });
+	    const prodPayload = {data: algoliaData, intNo};
+         console.log(prodPayload, 'produc tpayload');
+		AlgoliaProducer(JSON.stringify(prodPayload), "ALGOLIA_PRODUCT_UPDATE", "KEY-PRORDUCT-AlGOLIA");
         }
 
     });
