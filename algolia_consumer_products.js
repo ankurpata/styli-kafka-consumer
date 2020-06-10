@@ -14,14 +14,16 @@ const client = algoliasearch('testing20LAJL5O48', '8372234dcaf9e8dd3515dc962c9e6
 
 const kafkaConf = {
     "group.id": "librd-test",
+    "fetch.message.max.bytes":"15728640",
+    "max.partition.fetch.bytes": "15728640",
     "metadata.broker.list": "localhost:9092",
     "socket.keepalive.enable": true,
     'enable.auto.commit': false,
     "debug": "generic,broker,security"
 };
 
-app.use(bodyParser.json({limit: '10mb', extended: true}));
-app.use(bodyParser.urlencoded({limit: '10mb', extended: true}));
+app.use(bodyParser.json({limit: '15mb', extended: true}));
+app.use(bodyParser.urlencoded({limit: '15mb', extended: true}));
 app.use(cookieParser());
 app.use(cors());
 app.use(function (req, res, next) {
@@ -63,7 +65,8 @@ try {
         //Push updates to Algolia
 
         const index = client.initIndex('reaction_kafka_product');
-        updateArray.shift();
+  /**
+	updateArray.shift();
         const batchUpdateArr = updateArray.map((productVariant) => {
             const {product, variants} = productVariant;
             let productSku = variants[0].sku.substring(0, variants[0].sku.length - 2);
@@ -74,7 +77,8 @@ try {
                 attributeSize: product.metafields.length
             }
         });
-        console.log(batchUpdateArr.length, ': Size of batchUpdateArr', batchUpdateArr.length);
+     */
+    console.log(updateArray.length, ': Size of updateArr', updateArray.length);
 
         // throw Error("Exception Intentionally");
 
@@ -107,7 +111,7 @@ try {
         //     });
         // }
         try {
-            const res = await index.saveObjects(batchUpdateArr, {autoGenerateObjectIDIfNotExist: true});
+            const res = await index.saveObjects(updateArray, {autoGenerateObjectIDIfNotExist: true});
             console.log(' Res Bulk products UPSERT SAVE ');
         } catch (e) {
             console.log(e.message, 'e@message,Error');
@@ -122,12 +126,12 @@ try {
         const logParams = {
             "iterationName": "csv_produts_save",
             "iterationNumber": intNo,
-            "numRecords": batchUpdateArr.length,
+            "numRecords": updateArray.length,
             "execTime1": -1,
             "startTime": new Date().toISOString(),
             "endTime": new Date().toISOString(),
             "batchNumber": 1,
-            "itemsPerBatch": batchUpdateArr.length,
+            "itemsPerBatch": updateArray.length,
             "execTime2": "-1",
             "platform": "reaction"
         };
@@ -136,9 +140,9 @@ try {
 
             //Async post and do not wait for response.
             const {data: logRes} = await axios.post('https://us-central1-stylishopdev.cloudfunctions.net/perf-monitor', logParams);
-            console.log(batchUpdateArr.length, logParams, 'Read batchUpdateArr CSV', ". Dispatching product updates data. logRes: ", logRes);
+            console.log(updateArray.length, logParams, 'Read batchUpdateArr CSV', ". Dispatching product updates data. logRes: ", logRes);
         } catch (e) {
-            console.log(e.message, 'Error logging')
+            console.log(e.message, 'Error logging', logParams);
         }
     });
     consumer.on("disconnected", function (arg) {

@@ -4,6 +4,7 @@ const express = require('express');
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
+require('dotenv').config();
 const _ = require('lodash');
 const csv = require('csvtojson')
 const {GraphQLClient} = require("graphql-request");
@@ -90,11 +91,13 @@ try {
         /**
          * Save New Prices for SKUs
          */
-        const batchUpdateArr = payload.data.map(([sku, price, special_price]) => ({
+        let batchUpdateArr = payload.data.map(([sku, price, special_price]) => ({
             sku,
             price,
             special_price,
         }));
+       
+console.log(batchUpdateArr, 'batchUpdateArr', shopId,' shopId ');
 
         const inp = {
             input: {

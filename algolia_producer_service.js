@@ -6,7 +6,8 @@ const AlgoliaProducer = async (rowsStr, topic, keyReq) => {
 
         const producer = new Kafka.Producer({
             'metadata.broker.list': 'localhost:9092',
-            'dr_cb': true
+	    'message.max.bytes': '15728640',
+	    'dr_cb': true
         });
 
         //logging debug messages, if debug is enabled
@@ -32,7 +33,8 @@ const AlgoliaProducer = async (rowsStr, topic, keyReq) => {
             const partition = -1;
             const key = keyReq || 'KEY-PRICE-AlGOLIA';
             let value = Buffer.from(rowsStr);
-            producer.produce(TOPIC, partition, value, key);
+           console.log('Dispatching topic', TOPIC, rowsStr.length);
+	   producer.produce(TOPIC, partition, value, key);
             return true;
         });
 
