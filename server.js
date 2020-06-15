@@ -18,7 +18,7 @@ const client = new GraphQLClient(gqlUrl, {
 });
 
 const shopId = process.env.SHOPID;
-const {AlgoliaProducer} = require("./algolia_producer_service.js");
+const {AlgoliaProducer} = require("./producers/algolia_producer_service.js");
 
 const bodyParser = require('body-parser');
 const app = express();

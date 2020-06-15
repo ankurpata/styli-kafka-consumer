@@ -10,7 +10,7 @@ const csv = require('csvtojson')
 const {GraphQLClient} = require("graphql-request");
 const gqlUrl = "http://localhost:3000/graphql/";
 const attrCache = {};
-const {AlgoliaProducer} = require("./algolia_producer_service.js");
+const {AlgoliaProducer} = require("../producers/algolia_producer_service.js");
 const client = new GraphQLClient(gqlUrl, {
     headers: {
         "Authorization": process.env.AUTH_KEY
@@ -21,7 +21,7 @@ const shopId = process.env.SHOPID;
 
 const bodyParser = require('body-parser');
 const app = express();
-const product = require("./routes/product");
+const product = require("../routes/product");
 
 const kafkaConf = {
     "group.id": "librd-test",
