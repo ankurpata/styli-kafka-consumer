@@ -21,7 +21,7 @@ const shopId = process.env.SHOPID;
 
 const bodyParser = require('body-parser');
 const app = express();
-const product = require("../routes/product");
+const product = require("../api/product");
 
 const kafkaConf = {
     "group.id": "librd-test",

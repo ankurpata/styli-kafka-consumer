@@ -64,8 +64,8 @@ try {
 
         const index = client.initIndex('reaction_kafka_test');
         updateArray.shift();
-      //   objectID: sku
-	const batchUpdateArr = updateArray.map(([sku, price, special_price]) => ({
+        //   objectID: sku
+        const batchUpdateArr = updateArray.map(([sku, price, special_price]) => ({
             sku,
             price,
             special_price,
@@ -118,7 +118,7 @@ try {
         const logParams = {
             "iterationName": "price_revision_save",
             "iterationNumber": payload.intNo,
-            "numRecords": batchUpdateArr.length -1,
+            "numRecords": batchUpdateArr.length - 1,
             "execTime1": -1,
             "startTime": new Date().toISOString(),
             "endTime": new Date().toISOString(),

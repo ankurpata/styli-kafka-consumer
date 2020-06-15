@@ -18,15 +18,15 @@ const client = new GraphQLClient(gqlUrl, {
 });
 
 const shopId = process.env.SHOPID;
-const {AlgoliaProducer} = require("./producers/algolia_producer_service.js");
+const {AlgoliaProducer} = require("../producers/algolia_producer_service.js");
 
 const bodyParser = require('body-parser');
 const app = express();
-const product = require("./routes/product");
+const product = require("../api/product");
 
 const kafkaConf = {
     "group.id": "librd-test",
-    "fetch.message.max.bytes":"15728640",
+    "fetch.message.max.bytes": "15728640",
     "metadata.broker.list": "localhost:9092",
     "socket.keepalive.enable": true,
     'enable.auto.commit': false,
@@ -150,24 +150,24 @@ try {
                     data: chunk
                 }
             };
-		console.log('creatig bulk product');
- //           const productIds = await product.createBulkProductFn(inp);
-    //        console.log('created',{productIds});
+            console.log('creating bulk product');
+            //           const productIds = await product.createBulkProductFn(inp);
+            //        console.log('created',{productIds});
 
             //Dispatch to Kafka. Call Producer
             const algoliaData = chunk.map((productVariant) => {
-           	const {product, variants} = productVariant;
-            	let productSku = variants[0].sku.substring(0, variants[0].sku.length - 2);
-                return  {
-                 sku: productSku,
-                 title:product.title,
-                 variantSize: variants.length,
-                 attributeSize: product.metafields.length
-              }
+                const {product, variants} = productVariant;
+                let productSku = variants[0].sku.substring(0, variants[0].sku.length - 2);
+                return {
+                    sku: productSku,
+                    title: product.title,
+                    variantSize: variants.length,
+                    attributeSize: product.metafields.length
+                }
             });
-	    const prodPayload = {data: algoliaData, intNo};
-         console.log(prodPayload, 'produc tpayload');
-		AlgoliaProducer(JSON.stringify(prodPayload), "ALGOLIA_PRODUCT_UPDATE", "KEY-PRORDUCT-AlGOLIA");
+            const prodPayload = {data: algoliaData, intNo};
+            console.log(prodPayload, 'produc tpayload');
+            AlgoliaProducer(JSON.stringify(prodPayload), "ALGOLIA_PRODUCT_UPDATE", "KEY-PRORDUCT-AlGOLIA");
         }
 
     });
