@@ -24,7 +24,7 @@
     "graphql": "^15.0.0",
     "graphql-request": "^1.8.2",
     "graphql-tag": "^2.10.3",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.21",
     "node-rdkafka": "^2.2.0",
     "nodemon": "^2.0.4"
   }
